@@ -43,22 +43,16 @@ public:
 
 
 	Optional& operator=(const T& rhs) {
-		if (is_initialized_)
-			*reinterpret_cast<T*>(data_) = rhs;
-		else {
-			new (data_) T{ rhs };
-			is_initialized_ = true;
-		}
+		Reset();
+		new (data_) T{ rhs };
+		is_initialized_ = true;
 		return *this;
 	}
 
 	Optional& operator=(T&& rhs) {
-		if (is_initialized_)
-			*reinterpret_cast<T*>(data_) = std::move(rhs);
-		else {
-			new (data_) T{ std::move(rhs) };
-			is_initialized_ = true;
-		}
+		Reset();
+		new (data_) T{ std::move(rhs) };
+		is_initialized_ = true;
 		return *this;
 	}
 
@@ -74,10 +68,7 @@ public:
 				}
 			}
 			else {
-				if (is_initialized_) {
-					reinterpret_cast<T*>(data_)->~T();
-					is_initialized_ = false;
-				}
+				Reset();
 			}
 		}
 		return *this;
@@ -95,13 +86,17 @@ public:
 				}
 			}
 			else {
-				if (is_initialized_) {
-					reinterpret_cast<T*>(data_)->~T();
-					is_initialized_ = false;
-				}
+				Reset();
 			}
 		}
 		return *this;
+	}
+
+	template<typename... Types>
+	void Emplace(Types&&... args) {
+		Reset();
+		new (data_) T{ std::forward<Types>(args)... };
+		is_initialized_ = true;
 	}
 
 
@@ -115,14 +110,11 @@ public:
 	bool HasValue() const { return is_initialized_; }
 	operator bool() const { return is_initialized_; }
 
-	// Операторы * и -> не должны делать никаких проверок на пустоту Optional.
-	// Эти проверки остаются на совести программиста
 	T& operator*() { return *reinterpret_cast<T*>(data_); }
 	const T& operator*() const { return *reinterpret_cast<const T*>(data_); }
 	T* operator->() { return reinterpret_cast<T*>(data_); }
 	const T* operator->() const { return reinterpret_cast<const T*>(data_); }
 
-	// Метод Value() генерирует исключение BadOptionalAccess, если Optional пуст
 	T& Value() {
 		if (!is_initialized_) throw BadOptionalAccess();
 		return *reinterpret_cast<T*>(data_);
