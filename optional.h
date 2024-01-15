@@ -1,6 +1,7 @@
 #pragma once
 #include <stdexcept>
 #include <utility>
+#include <iostream>
 
 // Исключение этого типа должно генерироватся при обращении к пустому optional
 class BadOptionalAccess : public std::exception {
@@ -110,18 +111,24 @@ public:
 	bool HasValue() const { return is_initialized_; }
 	operator bool() const { return is_initialized_; }
 
-	T& operator*() { return *reinterpret_cast<T*>(data_); }
-	const T& operator*() const { return *reinterpret_cast<const T*>(data_); }
+	T& operator*() & { return *reinterpret_cast<T*>(data_); }
+	const T& operator*() const& { return *reinterpret_cast<const T*>(data_); }
+	T&& operator*() && { return std::move(*reinterpret_cast<T*>(data_)); }
 	T* operator->() { return reinterpret_cast<T*>(data_); }
 	const T* operator->() const { return reinterpret_cast<const T*>(data_); }
 
-	T& Value() {
+	T& Value() & {
 		if (!is_initialized_) throw BadOptionalAccess();
 		return *reinterpret_cast<T*>(data_);
 	}
-	const T& Value() const {
+	const T& Value() const& {
 		if (!is_initialized_) throw BadOptionalAccess();
 		return *reinterpret_cast<const T*>(data_);
+	}
+
+	T&& Value() && {
+		if (!is_initialized_) throw BadOptionalAccess();
+		return std::move(*reinterpret_cast<T*>(data_));
 	}
 
 	void Reset() {
